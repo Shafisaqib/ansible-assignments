@@ -1,0 +1,57 @@
+---
+- name: Install NGINX, set port to 8081, and deploy sample app
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Ensure nginx is enabled and started
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Change nginx listen port from 80 to 8081
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/sites-available/default
+        regexp: '^\s*listen\s+80\s+'
+        line: '        listen 8081 default_server;'
+        backrefs: yes
+      notify: Reload nginx
+
+    - name: Update IPv6 nginx listen port from 80 to 8081
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/sites-available/default
+        regexp: '^\s*listen\s+\[::\]:80\s+'
+        line: '        listen [::]:8081 default_server;'
+        backrefs: yes
+      notify: Reload nginx
+
+    - name: Deploy simple sample application index page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Sample NGINX App</title>
+          </head>
+          <body>
+            <h1>Welcome to NGINX on port 8081</h1>
+            <p>This is a sample application page deployed by Ansible.</p>
+          </body>
+          </html>
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
