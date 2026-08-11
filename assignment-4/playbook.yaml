@@ -1,0 +1,18 @@
+---
+- name: Ansible Vault Example
+  hosts: localhost
+  connection: local
+  become: yes
+
+  vars_files:
+    - group_vars/all/vault.yml
+
+  tasks:
+
+    - name: Show Vault username
+      ansible.builtin.debug:
+        msg: "Tomcat user is {{ tomcat_admin_user }}"
+
+    - name: Show that Vault password is available
+      ansible.builtin.debug:
+        msg: "Tomcat password is available"
