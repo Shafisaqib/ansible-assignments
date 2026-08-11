@@ -1,0 +1,35 @@
+---
+- name: Install Tomcat and change HTTP port to 9090
+  hosts: localhost
+  become: yes
+  vars:
+    tomcat_package: tomcat
+    tomcat_service: tomcat
+    tomcat_server_xml: /etc/tomcat/server.xml
+    tomcat_http_port: 9090
+
+  tasks:
+    - name: Install Tomcat package
+      ansible.builtin.package:
+        name: "{{ tomcat_package }}"
+        state: present
+
+    - name: Ensure Tomcat service is enabled and started
+      ansible.builtin.service:
+        name: "{{ tomcat_service }}"
+        enabled: yes
+        state: started
+
+    - name: Update Tomcat HTTP connector port from 8080 to 9090
+      ansible.builtin.lineinfile:
+        path: "{{ tomcat_server_xml }}"
+        regexp: '(<Connector[^>]*port=")8080("[^>]*>)'
+        line: '\1{{ tomcat_http_port }}\2'
+        backrefs: yes
+      notify: Restart Tomcat
+
+  handlers:
+    - name: Restart Tomcat
+      ansible.builtin.service:
+        name: "{{ tomcat_service }}"
+        state: restarted

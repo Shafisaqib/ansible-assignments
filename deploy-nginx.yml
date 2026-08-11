@@ -23,14 +23,6 @@
         backrefs: yes
       notify: Reload nginx
 
-    - name: Update IPv6 nginx listen port from 80 to 8081
-      ansible.builtin.lineinfile:
-        path: /etc/nginx/sites-available/default
-        regexp: '^\s*listen\s+\[::\]:80\s+'
-        line: '        listen [::]:8081 default_server;'
-        backrefs: yes
-      notify: Reload nginx
-
     - name: Deploy simple sample application index page
       ansible.builtin.copy:
         dest: /var/www/html/index.html
