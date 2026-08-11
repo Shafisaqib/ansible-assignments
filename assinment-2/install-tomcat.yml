@@ -1,40 +1,37 @@
 ---
-- name: Install Tomcat and change HTTP port to 9090
+- name: Install and configure Tomcat
   hosts: localhost
-  become: yes
-  vars:
-    tomcat_http_port: 9090
+  become: true
 
   tasks:
-    - name: Set Tomcat vars for Debian/Ubuntu
-      ansible.builtin.set_fact:
-        tomcat_package: tomcat9
-        tomcat_service: tomcat9
-        tomcat_server_xml: /etc/tomcat9/server.xml
-      when: ansible_facts['os_family'] == 'Debian'
 
+    - name: Install Java
+      apt:
+        name: openjdk-17-jdk
+        state: present
+        update_cache: true
 
-    - name: Install Tomcat package
-      ansible.builtin.package:
-        name: "{{ tomcat_package }}"
+    - name: Install Tomcat
+      apt:
+        name: tomcat10
         state: present
 
-    - name: Ensure Tomcat service is enabled and started
-      ansible.builtin.service:
-        name: "{{ tomcat_service }}"
-        enabled: yes
-        state: started
-
-    - name: Update Tomcat HTTP connector port from 8080 to 9090
-      ansible.builtin.lineinfile:
-        path: "{{ tomcat_server_xml }}"
-        regexp: '(<Connector[^>]*port=")8080("[^>]*>)'
-        line: '\1{{ tomcat_http_port }}\2'
-        backrefs: yes
+    - name: Change Tomcat port from 8080 to 9090
+      replace:
+        path: /etc/tomcat10/server.xml
+        regexp: 'port="8080"'
+        replace: 'port="9090"'
       notify: Restart Tomcat
 
+    - name: Ensure Tomcat is started and enabled
+      service:
+        name: tomcat10
+        state: started
+        enabled: true
+
   handlers:
+
     - name: Restart Tomcat
-      ansible.builtin.service:
-        name: "{{ tomcat_service }}"
+      service:
+        name: tomcat10
         state: restarted
