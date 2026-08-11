@@ -10,10 +10,10 @@
     backup_dir: /tmp/tomcat_backups
 
   tasks:
-    - name: Check for /var/lib/tomcat9
+    - name: Check for /var/lib/tomcat10
       ansible.builtin.stat:
-        path: /var/lib/tomcat9
-      register: s_tomcat9
+        path: /var/lib/tomcat10
+      register: s_tomcat10
 
     - name: Check for /var/lib/tomcat
       ansible.builtin.stat:
@@ -25,26 +25,26 @@
         path: /opt/tomcat/latest
       register: s_opt_tomcat
 
-    - name: Set webapps_dir and service for Debian tomcat9
+    - name: Set webapps_dir and service for Debian tomcat10
       ansible.builtin.set_fact:
-        webapps_dir: /var/lib/tomcat9/webapps
-        tomcat_service: tomcat9
+        webapps_dir: /var/lib/tomcat10/webapps
+        tomcat_service: tomcat10
         tomcat_user: tomcat
-      when: s_tomcat9.stat.exists
+      when: s_tomcat10.stat.exists
 
     - name: Set webapps_dir and service for /var/lib/tomcat
       ansible.builtin.set_fact:
         webapps_dir: /var/lib/tomcat/webapps
         tomcat_service: tomcat
         tomcat_user: tomcat
-      when: s_tomcat.stat.exists and not s_tomcat9.stat.exists
+      when: s_tomcat.stat.exists and not s_tomcat10.stat.exists
 
     - name: Set webapps_dir and service for manual /opt/tomcat
       ansible.builtin.set_fact:
         webapps_dir: /opt/tomcat/latest/webapps
         tomcat_service: tomcat
         tomcat_user: tomcat
-      when: s_opt_tomcat.stat.exists and not s_tomcat9.stat.exists and not s_tomcat.stat.exists
+      when: s_opt_tomcat.stat.exists and not s_tomcat10.stat.exists and not s_tomcat.stat.exists
 
     - name: Fail if Tomcat webapps directory not detected
       ansible.builtin.fail:
