@@ -1,9 +1,0 @@
-# Assignment 1 - Nginx Deployment
-
-## Question
-
-Write an Ansible playbook to install Nginx, change the port from 80 to 8081, and deploy an application without using roles.
-
-## Objective
-
-The objective is to install and configure Nginx using Ansible and deploy a simple application on port 8081.
