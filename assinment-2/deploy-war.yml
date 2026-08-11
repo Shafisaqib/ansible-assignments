@@ -1,0 +1,107 @@
+---
+- name: Deploy WAR to Tomcat
+  hosts: localhost
+  become: yes
+  vars:
+    new_war_src: files/myapp.war        # path on controller relative to playbook
+    new_war_name: myapp.war
+    app_context: myapp                  # context path used in health check
+    tomcat_http_port: 9090
+    backup_dir: /tmp/tomcat_backups
+
+  tasks:
+    - name: Check for /var/lib/tomcat9
+      ansible.builtin.stat:
+        path: /var/lib/tomcat9
+      register: s_tomcat9
+
+    - name: Check for /var/lib/tomcat
+      ansible.builtin.stat:
+        path: /var/lib/tomcat
+      register: s_tomcat
+
+    - name: Check for /opt/tomcat/latest
+      ansible.builtin.stat:
+        path: /opt/tomcat/latest
+      register: s_opt_tomcat
+
+    - name: Set webapps_dir and service for Debian tomcat9
+      ansible.builtin.set_fact:
+        webapps_dir: /var/lib/tomcat9/webapps
+        tomcat_service: tomcat9
+        tomcat_user: tomcat
+      when: s_tomcat9.stat.exists
+
+    - name: Set webapps_dir and service for /var/lib/tomcat
+      ansible.builtin.set_fact:
+        webapps_dir: /var/lib/tomcat/webapps
+        tomcat_service: tomcat
+        tomcat_user: tomcat
+      when: s_tomcat.stat.exists and not s_tomcat9.stat.exists
+
+    - name: Set webapps_dir and service for manual /opt/tomcat
+      ansible.builtin.set_fact:
+        webapps_dir: /opt/tomcat/latest/webapps
+        tomcat_service: tomcat
+        tomcat_user: tomcat
+      when: s_opt_tomcat.stat.exists and not s_tomcat9.stat.exists and not s_tomcat.stat.exists
+
+    - name: Fail if Tomcat webapps directory not detected
+      ansible.builtin.fail:
+        msg: "Could not detect Tomcat webapps directory. Please set `webapps_dir` and `tomcat_service` variables."
+      when: webapps_dir is not defined
+
+    - name: Stop Tomcat service
+      ansible.builtin.service:
+        name: "{{ tomcat_service }}"
+        state: stopped
+
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}/{{ ansible_date_time.iso8601_basic }}"
+        state: directory
+        mode: '0755'
+      register: backup_path
+
+    - name: Backup existing WAR if present
+      ansible.builtin.copy:
+        src: "{{ webapps_dir }}/{{ new_war_name }}"
+        dest: "{{ backup_dir }}/{{ ansible_date_time.iso8601_basic }}/"
+        remote_src: yes
+      when: ansible.builtin.stat(path="{{ webapps_dir }}/{{ new_war_name }}").stat.exists
+
+    - name: Remove exploded app directory if present
+      ansible.builtin.file:
+        path: "{{ webapps_dir }}/{{ app_context }}"
+        state: absent
+
+    - name: Deploy new WAR file
+      ansible.builtin.copy:
+        src: "{{ new_war_src }}"
+        dest: "{{ webapps_dir }}/{{ new_war_name }}"
+        owner: "{{ tomcat_user | default(omit) }}"
+        mode: '0644'
+
+    - name: Start Tomcat service
+      ansible.builtin.service:
+        name: "{{ tomcat_service }}"
+        state: started
+        enabled: yes
+
+    - name: Wait for Tomcat to listen on port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ tomcat_http_port }}"
+        timeout: 30
+
+    - name: Health check deployed application
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ tomcat_http_port }}/{{ app_context }}/"
+        status_code: 200
+        return_content: no
+      register: app_check
+      failed_when: app_check.status != 200
+
+    - name: Show health check result
+      ansible.builtin.debug:
+        msg: "Application responded with status {{ app_check.status }}"
